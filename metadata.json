@@ -1,0 +1,6 @@
+{
+  "name": "AI Video Script Studio",
+  "description": "Sequential script-to-video studio with scene development and WAN 2.2 image-to-video generation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
