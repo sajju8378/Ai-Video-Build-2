@@ -212,7 +212,8 @@ async function submitDirectToHuggingFace(params: {
   ).trim();
 
   const rawDuration = parseFloat(String(params.duration));
-  const duration = isNaN(rawDuration) ? 3.5 : Math.max(2, Math.min(10, rawDuration));
+  // Keep duration strictly between 2.0s and 5.0s (default 3.5s) to guarantee execution under ZeroGPU quota
+  const duration = isNaN(rawDuration) ? 3.5 : Math.max(2, Math.min(5.0, rawDuration));
   const steps = params.steps || 4;
   const quality = params.quality || 5;
   const scheduler = params.scheduler || "UniPCMultistep";
@@ -477,6 +478,18 @@ export async function streamWanJob(
           } catch {
             if (dataStr && dataStr !== "null") errorMsg = dataStr;
           }
+
+          // Clarify generic null/undefined errors from ZeroGPU
+          if (
+            !errorMsg ||
+            errorMsg === "WAN generation encountered an error." ||
+            errorMsg === "null" ||
+            errorMsg.includes("GPU")
+          ) {
+            errorMsg =
+              "ZeroGPU execution quota or queue timeout. Video shots generate most reliably at 3.5s duration. Try retrying with 3.5s or add your free HF Token in Settings.";
+          }
+
           encounteredError = errorMsg;
           onUpdate({
             stage: "error",

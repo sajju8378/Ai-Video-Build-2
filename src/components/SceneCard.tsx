@@ -11,6 +11,9 @@ import {
   Sparkles,
   RefreshCw,
   Image as ImageIcon,
+  Key,
+  Sliders,
+  Zap,
 } from "lucide-react";
 
 interface SceneCardProps {
@@ -19,6 +22,7 @@ interface SceneCardProps {
   isProcessingAny: boolean;
   onUpdateScene: (index: number, updates: Partial<SceneData>) => void;
   onGenerateVideo: (index: number) => void;
+  onOpenSettings?: () => void;
 }
 
 export const SceneCard: React.FC<SceneCardProps> = ({
@@ -27,6 +31,7 @@ export const SceneCard: React.FC<SceneCardProps> = ({
   isProcessingAny,
   onUpdateScene,
   onGenerateVideo,
+  onOpenSettings,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -147,12 +152,30 @@ export const SceneCard: React.FC<SceneCardProps> = ({
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               Scene {scene.index + 1}
             </h3>
-            <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-1">
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3 text-slate-500" /> {scene.timeline}
               </span>
               <span>•</span>
-              <span className="text-indigo-400 font-medium">{scene.duration}s duration</span>
+              <div className="flex items-center gap-1">
+                <span className="text-slate-400">Duration:</span>
+                {[3.5, 4.0, 5.0].map((dur) => (
+                  <button
+                    key={dur}
+                    type="button"
+                    disabled={isBusy}
+                    onClick={() => onUpdateScene(scene.index, { duration: dur })}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors ${
+                      Math.abs(scene.duration - dur) < 0.2
+                        ? "bg-indigo-600 text-white font-bold"
+                        : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+                    }`}
+                    title={`Set duration to ${dur}s for Scene ${scene.index + 1}`}
+                  >
+                    {dur}s
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -315,11 +338,41 @@ export const SceneCard: React.FC<SceneCardProps> = ({
       )}
 
       {scene.error && (
-        <div className="mt-4 p-3 rounded-lg bg-rose-950/40 border border-rose-800/60 text-rose-300 text-xs flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <div className="font-semibold text-rose-200">Generation Failed</div>
-            <div className="text-[11px] text-rose-300/90 mt-0.5 font-mono break-all">{scene.error}</div>
+        <div className="mt-4 p-3.5 rounded-lg bg-rose-950/40 border border-rose-800/60 text-rose-300 text-xs space-y-2.5">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="font-semibold text-rose-200">Generation Failed</div>
+              <div className="text-[11px] text-rose-300/90 mt-0.5 font-mono break-words leading-relaxed">
+                {scene.error}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-rose-900/40">
+            <button
+              type="button"
+              disabled={isBusy}
+              onClick={() => {
+                onUpdateScene(scene.index, { duration: 3.5, error: null });
+                setTimeout(() => onGenerateVideo(scene.index), 50);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs shadow-sm cursor-pointer transition-colors"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-300" />
+              Auto-Fix &amp; Retry (3.5s Safe Mode)
+            </button>
+
+            {onOpenSettings && (
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs border border-slate-700 cursor-pointer transition-colors"
+              >
+                <Key className="w-3 h-3 text-indigo-400" />
+                Configure Free HF Token
+              </button>
+            )}
           </div>
         </div>
       )}

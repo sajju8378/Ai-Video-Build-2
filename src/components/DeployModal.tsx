@@ -18,11 +18,18 @@ import { PWAInstallButton } from './PWAInstallButton';
 interface DeployModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: 'pages' | 'apk' | 'api';
 }
 
-export const DeployModal: React.FC<DeployModalProps> = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState<'pages' | 'apk' | 'api'>('pages');
+export const DeployModal: React.FC<DeployModalProps> = ({ isOpen, onClose, initialTab = 'pages' }) => {
+  const [activeTab, setActiveTab] = useState<'pages' | 'apk' | 'api'>(initialTab);
   const [copied, setCopied] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab, isOpen]);
 
   if (!isOpen) return null;
 

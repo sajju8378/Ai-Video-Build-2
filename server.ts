@@ -118,8 +118,8 @@ app.post("/api/wan/start", upload.single("image"), async (req, res) => {
     ).trim();
 
     const rawDuration = parseFloat(req.body.duration);
-    // WAN Space duration slider is 0.5 to 10 seconds; default clamp 2 to 10s
-    const duration = isNaN(rawDuration) ? 3.5 : Math.max(2, Math.min(10, rawDuration));
+    // Keep duration strictly between 2.0s and 5.0s (default 3.5s) to guarantee execution under ZeroGPU quota
+    const duration = isNaN(rawDuration) ? 3.5 : Math.max(2, Math.min(5.0, rawDuration));
 
     const steps = parseInt(req.body.steps, 10) || 4;
     const quality = parseInt(req.body.quality, 10) || 5;

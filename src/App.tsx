@@ -43,6 +43,7 @@ export default function App() {
 
   // State 6: Deploy & APK modal
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
+  const [deployModalTab, setDeployModalTab] = useState<'pages' | 'apk' | 'api'>('pages');
 
   const scenesRef = useRef<SceneData[]>([]);
   scenesRef.current = scenes;
@@ -180,27 +181,46 @@ export default function App() {
       const targetScene = scenesRef.current[index];
       if (!targetScene) return;
 
-      if (!targetScene.imageFile) {
+      // Ensure starting image file exists (auto-recover from preview URL if needed)
+      let imageFile = targetScene.imageFile;
+      if (!imageFile && targetScene.imagePreviewUrl) {
+        try {
+          const res = await fetch(targetScene.imagePreviewUrl);
+          const blob = await res.blob();
+          imageFile = new File([blob], `scene_${index + 1}_start.jpg`, {
+            type: blob.type || "image/jpeg",
+          });
+          // Cache in memory for subsequent operations
+          handleUpdateScene(index, { imageFile });
+        } catch (e: any) {
+          console.warn("Could not convert preview URL to file:", e);
+        }
+      }
+
+      if (!imageFile) {
         addLog("error", `ERROR: Starting image is missing for Scene ${index + 1}`, index);
         handleUpdateScene(index, {
           status: "ERROR",
-          error: "ERROR: Starting image is missing. Please select an image first.",
+          error: "ERROR: Starting image is missing. Please select or drop an image first.",
         });
         return;
       }
+
+      // Safe clamp duration between 2.5s and 5.0s (default 3.5s) to guarantee execution under ZeroGPU quota
+      const safeDuration = Math.min(5.0, Math.max(2.5, targetScene.duration || 3.5));
 
       // Mark this scene as actively busy
       setActiveGeneratingIndex(index);
       handleUpdateScene(index, {
         status: "UPLOADING",
-        statusMessage: "Uploading starting image to Hugging Face...",
+        statusMessage: `Uploading starting image (${safeDuration}s duration)...`,
         progress: 10,
         error: null,
       });
 
       addLog(
         "info",
-        `Starting WAN 2.2 pipeline for Scene ${index + 1} (${targetScene.imageFile.name})`,
+        `Starting WAN 2.2 pipeline for Scene ${index + 1} (${imageFile.name || "frame"}, ${safeDuration}s)`,
         index
       );
 
@@ -213,11 +233,11 @@ export default function App() {
         .join(". ");
 
       try {
-        // Step 1: Submit job to backend
+        // Step 1: Submit job to backend or direct HF space
         const { eventId, duration } = await submitWanJob({
-          imageFile: targetScene.imageFile,
+          imageFile,
           prompt: fullPrompt || "high quality, cinematic motion, smooth animation",
-          duration: targetScene.duration,
+          duration: safeDuration,
         });
 
         addLog("info", `WAN job queued successfully. Event ID: ${eventId}`, index);
@@ -328,18 +348,30 @@ export default function App() {
 
           <div className="flex items-center gap-3 text-xs">
             {backendHealth && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeployModalTab('api');
+                  setIsDeployModalOpen(true);
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-400 cursor-pointer transition-colors"
+                title="Click to configure Hugging Face Space URL and Token"
+              >
                 <Cpu className="w-3.5 h-3.5 text-indigo-400" />
                 <span className="hidden sm:inline">Space:</span>
                 <span className="text-slate-300 font-mono text-[11px] truncate max-w-[170px]" title={backendHealth.space}>
                   {backendHealth.space.split("/").pop()}
                 </span>
-                {backendHealth.hasToken && (
+                {backendHealth.hasToken ? (
                   <span className="flex items-center text-emerald-400 text-[10px] gap-0.5" title="HF Token Active">
                     <ShieldCheck className="w-3 h-3" /> Token
                   </span>
+                ) : (
+                  <span className="text-[10px] text-indigo-400/80 hover:text-indigo-300 underline font-mono">
+                    + Token
+                  </span>
                 )}
-              </div>
+              </button>
             )}
 
             {scenes.length > 0 && (
@@ -417,6 +449,10 @@ export default function App() {
                   isProcessingAny={activeGeneratingIndex !== null}
                   onUpdateScene={handleUpdateScene}
                   onGenerateVideo={handleGenerateSceneVideo}
+                  onOpenSettings={() => {
+                    setDeployModalTab('api');
+                    setIsDeployModalOpen(true);
+                  }}
                 />
               ))}
             </div>
@@ -442,6 +478,7 @@ export default function App() {
       <DeployModal
         isOpen={isDeployModalOpen}
         onClose={() => setIsDeployModalOpen(false)}
+        initialTab={deployModalTab}
       />
     </div>
   );

@@ -28,8 +28,8 @@ export function calculateSceneDuration(
   const estimatedSeconds = wordCount > 0 ? wordCount / wordsPerSecond : minDuration;
   const targetDuration = Math.max(minDuration, estimatedSeconds);
 
-  // Clamp within WAN 2.2 Lightning bounds (2.0s to 10.0s)
-  const clamped = Math.min(10.0, Math.max(2.0, targetDuration));
+  // Clamp within WAN 2.2 Lightning optimal bounds (2.5s to 5.0s) to prevent ZeroGPU timeouts
+  const clamped = Math.min(5.0, Math.max(2.5, targetDuration));
   return Math.round(clamped * 10) / 10;
 }
 
