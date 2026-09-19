@@ -248,8 +248,41 @@ cd android && ./gradlew assembleDebug`}
                 </p>
                 <div className="space-y-2">
                   <label className="block text-xs font-medium text-slate-300">
-                    Hugging Face WAN 2.2 Space URL (Default: Custom Lightning 4-8 Step):
+                    Hugging Face WAN 2.2 Space:
                   </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pb-1">
+                    {[
+                      {
+                        name: "Lightning (Primary)",
+                        url: "https://saravutw-wan2-2-i2v-lightning-4-8step-custom.hf.space",
+                      },
+                      {
+                        name: "Lightning (Mirror 1)",
+                        url: "https://ivannm-wan2-2-i2v-lightning-4-8step-custom-copy.hf.space",
+                      },
+                      {
+                        name: "4-Step LoRA (Mirror 2)",
+                        url: "https://geceff-wan2-2-i2v-4step-loras.hf.space",
+                      },
+                    ].map((sp) => (
+                      <button
+                        key={sp.url}
+                        type="button"
+                        onClick={() => {
+                          localStorage.setItem("hf_space_url", sp.url);
+                          window.location.reload();
+                        }}
+                        className={`px-2.5 py-2 rounded-lg text-left text-xs border transition ${
+                          (localStorage.getItem("hf_space_url") || "https://saravutw-wan2-2-i2v-lightning-4-8step-custom.hf.space") === sp.url
+                            ? "bg-indigo-600/30 border-indigo-500 text-white font-bold"
+                            : "bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-600"
+                        }`}
+                      >
+                        <div className="font-semibold">{sp.name}</div>
+                        <div className="text-[10px] text-slate-400 truncate">{sp.url.replace("https://", "").split(".")[0]}</div>
+                      </button>
+                    ))}
+                  </div>
                   <input
                     type="text"
                     placeholder="https://saravutw-wan2-2-i2v-lightning-4-8step-custom.hf.space"
@@ -264,17 +297,27 @@ cd android && ./gradlew assembleDebug`}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
                   />
                   <p className="text-[11px] text-slate-500">
-                    Leave blank to use the high-speed WAN 2.2 Lightning I2V default space.
+                    Select a mirror or enter a custom Hugging Face ZeroGPU space URL.
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-xs font-medium text-slate-300">
-                    Optional Hugging Face Token (HF_TOKEN):
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-medium text-slate-300">
+                      Hugging Face Token (Free Personal Access Token):
+                    </label>
+                    <a
+                      href="https://huggingface.co/settings/tokens"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] text-indigo-400 hover:text-indigo-300 underline flex items-center gap-1"
+                    >
+                      Get Token (Free) <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                   <input
                     type="password"
-                    placeholder="hf_..."
+                    placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                     defaultValue={localStorage.getItem('hf_user_token') || ''}
                     onChange={(e) => {
                       if (e.target.value.trim()) {
@@ -285,8 +328,8 @@ cd android && ./gradlew assembleDebug`}
                     }}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
                   />
-                  <p className="text-[11px] text-slate-500">
-                    Stored locally in your browser/device storage. Never shared with any third party.
+                  <p className="text-[11px] text-slate-400 leading-normal">
+                    Adding your free token gives you your own personal ZeroGPU quota bucket so WAN never rejects your sequential requests.
                   </p>
                 </div>
               </div>

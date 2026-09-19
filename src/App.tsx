@@ -6,7 +6,7 @@ import {
   loadStoredScenes,
   saveStoredScenes,
 } from "./modules/persistence";
-import { developScenesFromScript } from "./modules/sceneDeveloper";
+import { developScenesFromScript, formatTime } from "./modules/sceneDeveloper";
 import {
   submitWanJob,
   streamWanJob,
@@ -100,15 +100,27 @@ export default function App() {
   useEffect(() => {
     const savedScenes = loadStoredScenes();
     if (savedScenes.length > 0) {
-      const restored: SceneData[] = savedScenes.map((s) => ({
-        ...s,
-        imageFile: null,
-        imagePreviewUrl: null,
-        status: s.videoUrl ? "SUCCESS" : s.index === 0 ? "READY" : "LOCKED",
-        progress: s.videoUrl ? 100 : 0,
-      }));
+      let cumulativeTime = 0;
+      const restored: SceneData[] = savedScenes.map((s, idx) => {
+        const safeDuration = Math.min(Math.max(Number(s.duration) || 3.5, 2.5), 5.0);
+        const startTime = cumulativeTime;
+        const endTime = cumulativeTime + safeDuration;
+        cumulativeTime = endTime;
+        const timeline = `${formatTime(startTime)} - ${formatTime(endTime)}`;
+
+        return {
+          ...s,
+          duration: safeDuration,
+          timeline: s.timeline && !s.timeline.includes("10s") ? s.timeline : timeline,
+          imageFile: null,
+          imagePreviewUrl: null,
+          status: s.videoUrl ? "SUCCESS" : idx === 0 ? "READY" : "LOCKED",
+          progress: s.videoUrl ? 100 : 0,
+        };
+      });
       setScenes(restored);
-      addLog("info", `Restored ${restored.length} scenes from browser cache.`);
+      saveStoredScenes(restored);
+      addLog("info", `Restored ${restored.length} scenes from browser cache with safe duration limits.`);
     } else if (settings.script.trim()) {
       // If script exists in localStorage, automatically develop initial scene structure
       const initial = developScenesFromScript(
