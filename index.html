@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Video Script Studio</title>
+    <meta name="description" content="Sequential script-to-video studio with scene development and WAN 2.2 image-to-video generation." />
+    <meta property="og:title" content="AI Video Script Studio" />
+    <meta property="og:description" content="Sequential script-to-video studio with scene development and WAN 2.2 image-to-video generation." />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="VideoStudio" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="./pwa-192x192.png" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <script type="module" crossorigin src="./assets/index-BNYABgVR.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-59U5Odt9.css">
+  </head>
+  <body class="bg-slate-950 text-slate-100">
+    <div id="root"></div>
+    <script>
+      // On static GitHub Pages hosting when raw main branch root is deployed,
+      // redirect immediately to the compiled production bundle in /docs/
+      (function() {
+        var isGitHubPages = window.location.hostname.endsWith('github.io') || window.location.pathname.indexOf('/Ai-Video-Build-2') !== -1;
+        if (isGitHubPages && !window.location.pathname.includes('/docs/')) {
+          var basePath = window.location.pathname.replace(/\/+$/, '');
+          window.location.replace(basePath + '/docs/' + window.location.search + window.location.hash);
+        }
+      })();
+    </script>
+    <script>
+      // Register PWA service worker
+      if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').catch(() => {});
+        });
+      }
+
+      // GitHub Pages unbuilt raw repository fallback notice
+      // If deployed from raw main branch without running build, main.tsx will 404.
+      // This provides instant visual diagnosis and step-by-step instructions.
+      window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => {
+          const rootEl = document.getElementById('root');
+          if (rootEl && !rootEl.hasChildNodes()) {
+            rootEl.innerHTML = `
+              <div style="min-height: 100vh; background: #090d16; color: #f1f5f9; display: flex; align-items: center; justify-content: center; padding: 24px; font-family: system-ui, -apple-system, sans-serif;">
+                <div style="max-width: 640px; background: #131b2e; border: 1px solid #1e293b; border-radius: 16px; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+                  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                    <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3); display: flex; align-items: center; justify-content: center; color: #818cf8; font-size: 22px;">⚙️</div>
+                    <div>
+                      <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #f8fafc;">GitHub Pages Deployment Setup</h1>
+                      <p style="margin: 4px 0 0; font-size: 13px; color: #94a3b8;">Action required to complete your live deployment</p>
+                    </div>
+                  </div>
+                  <p style="font-size: 14px; line-height: 1.6; color: #cbd5e1; margin-bottom: 18px;">
+                    You are seeing this because GitHub Pages is currently configured to serve the uncompiled <code style="background: #1e293b; padding: 2px 6px; border-radius: 4px; color: #38bdf8;">main</code> branch root, which does not transpile TypeScript/React JSX.
+                  </p>
+                  <div style="background: #0b1120; border: 1px solid #1e293b; border-radius: 12px; padding: 18px; margin-bottom: 20px;">
+                    <div style="font-weight: 600; font-size: 14px; color: #38bdf8; margin-bottom: 10px;">Quick 1-Minute Fix:</div>
+                    <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #cbd5e1; line-height: 1.8;">
+                      <li>Open your repository on GitHub: <strong>Ai-Video-Build-2</strong></li>
+                      <li>Go to <strong>Settings</strong> &rarr; <strong>Pages</strong> (in the left sidebar)</li>
+                      <li>Under <strong>Build and deployment &gt; Source</strong>, change the dropdown from <em>"Deploy from a branch"</em> to <strong style="color: #4ade80;">"GitHub Actions"</strong></li>
+                      <li>Go to the <strong>Actions</strong> tab and run or push to <code style="background: #1e293b; padding: 2px 6px; border-radius: 4px; color: #38bdf8;">main</code></li>
+                    </ol>
+                  </div>
+                  <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <a href="https://github.com/sajju8378/Ai-Video-Build-2/settings/pages" target="_blank" rel="noreferrer" style="background: #4f46e5; color: white; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                      Open GitHub Pages Settings &rarr;
+                    </a>
+                  </div>
+                </div>
+              </div>
+            `;
+          }
+        }, 3500);
+      });
+    </script>
+</html>
+
