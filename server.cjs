@@ -121,7 +121,7 @@ app.post("/api/wan/start", upload.single("image"), async (req, res) => {
       req.body.negativePrompt || "blurry, low quality, chaotic, deformed, watermark, bad anatomy, shaky camera view point"
     ).trim();
     const rawDuration = parseFloat(req.body.duration);
-    const duration = isNaN(rawDuration) ? 3.5 : Math.max(2, Math.min(10, rawDuration));
+    const duration = isNaN(rawDuration) ? 3.5 : Math.max(2, Math.min(5, rawDuration));
     const steps = parseInt(req.body.steps, 10) || 4;
     const quality = parseInt(req.body.quality, 10) || 5;
     const scheduler = String(req.body.scheduler || "UniPCMultistep").trim();
