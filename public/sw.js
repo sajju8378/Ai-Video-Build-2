@@ -1,7 +1,6 @@
-// Service Worker for AI Video Script Studio
-const CACHE_NAME = 'ai-video-studio-v1';
+// Service Worker for AI Video Script Studio v2
+const CACHE_NAME = 'ai-video-studio-v2';
 const STATIC_ASSETS = [
-  './',
   './manifest.webmanifest',
   './pwa-192x192.png',
   './pwa-512x512.png',
@@ -11,9 +10,7 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch(() => {
-        // Continue even if some resources fail to cache
-      });
+      return cache.addAll(STATIC_ASSETS).catch(() => {});
     })
   );
   self.skipWaiting();
@@ -29,39 +26,40 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  // Pass through non-GET and API or Hugging Face requests directly to network
+  // Always bypass cache for non-GET, API routes, and Hugging Face / Gradio endpoints
   if (
     event.request.method !== 'GET' ||
     event.request.url.includes('/api/') ||
     event.request.url.includes('hf.space') ||
-    event.request.url.includes('gradio')
+    event.request.url.includes('gradio') ||
+    event.request.url.includes('huggingface.co')
   ) {
     return;
   }
 
+  // Network-first strategy for HTML pages and script bundles to prevent stale deployment locks
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        // Cache valid static responses
+    fetch(event.request)
+      .then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          const responseToCache = networkResponse.clone();
+          const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+            cache.put(event.request, responseClone);
           });
         }
         return networkResponse;
-      }).catch(() => {
-        return caches.match('./');
-      });
-    })
+      })
+      .catch(() => {
+        // Fallback to cache if offline
+        return caches.match(event.request).then((cached) => {
+          return cached || caches.match('./') || Promise.reject('offline');
+        });
+      })
   );
 });
+

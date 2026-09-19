@@ -17,9 +17,12 @@ export interface WanProgressUpdate {
  */
 export function isStaticDeployment(): boolean {
   if (typeof window === "undefined") return false;
-  const { hostname, protocol, port } = window.location;
+  const { hostname, protocol, port, pathname } = window.location;
   return (
     hostname.endsWith("github.io") ||
+    hostname.includes("github.io") ||
+    pathname.includes("Ai-Video-Build") ||
+    pathname.includes("/docs") ||
     protocol === "file:" ||
     protocol === "capacitor:" ||
     (hostname === "localhost" && port !== "3000")
