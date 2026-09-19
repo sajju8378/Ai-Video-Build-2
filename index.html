@@ -16,27 +16,27 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" type="image/png" href="./pwa-192x192.png" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
-    <script type="module" crossorigin src="./assets/index-BND7Zub7.js"></script>
+    <script type="module" crossorigin src="./assets/index-D-KfsGAr.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-Cmppctg5.css">
   </head>
   <body class="bg-slate-950 text-slate-100">
     <div id="root"></div>
     <script>
-      // On static GitHub Pages hosting when raw main branch root is deployed,
-      // redirect immediately to the compiled production bundle in /docs/
+      // Ensure users on GitHub Pages run from the fresh root deployment, not legacy /docs/ subfolder
       (function() {
-        var isGitHubPages = window.location.hostname.endsWith('github.io') || window.location.pathname.indexOf('/Ai-Video-Build-2') !== -1;
-        if (isGitHubPages && !window.location.pathname.includes('/docs/')) {
-          var basePath = window.location.pathname.replace(/\/+$/, '');
-          window.location.replace(basePath + '/docs/' + window.location.search + window.location.hash);
+        if (window.location.pathname && window.location.pathname.indexOf('/docs') !== -1) {
+          var cleanPath = window.location.pathname.replace(/\/docs(\/.*)?$/, '/');
+          window.location.replace(window.location.origin + cleanPath + window.location.search + window.location.hash);
         }
       })();
     </script>
     <script>
-      // Register PWA service worker
+      // Register PWA service worker and ensure immediate updates
       if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').catch(() => {});
+          navigator.serviceWorker.register('./sw.js').then((reg) => {
+            reg.update();
+          }).catch(() => {});
         });
       }
 
