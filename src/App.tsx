@@ -16,7 +16,9 @@ import { ScriptSection } from "./components/ScriptSection";
 import { SceneCard } from "./components/SceneCard";
 import { QuickTestSection } from "./components/QuickTestSection";
 import { DiagnosticLog } from "./components/DiagnosticLog";
-import { Clapperboard, Film, Sparkles, CheckCircle2, ShieldCheck, Cpu } from "lucide-react";
+import { PWAInstallButton } from "./components/PWAInstallButton";
+import { DeployModal } from "./components/DeployModal";
+import { Clapperboard, Film, Sparkles, CheckCircle2, ShieldCheck, Cpu, FolderGit2, Smartphone } from "lucide-react";
 
 export default function App() {
   // State 1: Script settings
@@ -36,6 +38,9 @@ export default function App() {
     space: string;
     hasToken: boolean;
   } | null>(null);
+
+  // State 6: Deploy & APK modal
+  const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
 
   const scenesRef = useRef<SceneData[]>([]);
   scenesRef.current = scenes;
@@ -327,6 +332,19 @@ export default function App() {
                 <span>{Math.round(totalDuration * 10) / 10}s total</span>
               </div>
             )}
+
+            {/* PWA Install Button */}
+            <PWAInstallButton />
+
+            {/* Deploy & APK Build Action */}
+            <button
+              onClick={() => setIsDeployModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/90 hover:bg-indigo-600 active:bg-indigo-700 text-white font-medium text-xs shadow-sm transition border border-indigo-400/40 cursor-pointer"
+              title="Open GitHub Pages & APK Build Center"
+            >
+              <FolderGit2 className="w-3.5 h-3.5" />
+              <span>Deploy / APK</span>
+            </button>
           </div>
         </div>
       </header>
@@ -399,6 +417,12 @@ export default function App() {
           <span className="text-slate-600">Strict Module Isolation &amp; Zero-Regression Pipeline</span>
         </div>
       </footer>
+
+      {/* Deploy & APK Modal */}
+      <DeployModal
+        isOpen={isDeployModalOpen}
+        onClose={() => setIsDeployModalOpen(false)}
+      />
     </div>
   );
 }

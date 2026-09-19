@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AI Video Script Studio</string>
+    <string name="title_activity_main">AI Video Script Studio</string>
+    <string name="package_name">com.sajju.aivideoscriptstudio</string>
+    <string name="custom_url_scheme">com.sajju.aivideoscriptstudio</string>
+</resources>
