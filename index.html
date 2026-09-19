@@ -19,6 +19,17 @@
   </head>
   <body class="bg-slate-950 text-slate-100">
     <div id="root"></div>
+    <script>
+      // On static GitHub Pages hosting when raw main branch root is deployed,
+      // redirect immediately to the compiled production bundle in /docs/
+      (function() {
+        var isGitHubPages = window.location.hostname.endsWith('github.io') || window.location.pathname.indexOf('/Ai-Video-Build-2') !== -1;
+        if (isGitHubPages && !window.location.pathname.includes('/docs/')) {
+          var basePath = window.location.pathname.replace(/\/+$/, '');
+          window.location.replace(basePath + '/docs/' + window.location.search + window.location.hash);
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
     <script>
       // Register PWA service worker

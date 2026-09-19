@@ -19,17 +19,13 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install Node dependencies
-        run: npm ci || npm install
+        run: npm install --legacy-peer-deps
 
       - name: Build Web Application
         run: npm run build
@@ -49,7 +45,7 @@ jobs:
         run: |
           mkdir -p build-output
           cp android/app/build/outputs/apk/debug/app-debug.apk build-output/AI-Video-Script-Studio.apk
-          echo "APK successfully built and copied to build-output/AI-Video-Script-Studio.apk"
+          echo "APK successfully built: $(ls -lh build-output/AI-Video-Script-Studio.apk)"
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
@@ -57,3 +53,4 @@ jobs:
           name: AI-Video-Script-Studio-APK
           path: build-output/AI-Video-Script-Studio.apk
           retention-days: 30
+
