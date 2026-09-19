@@ -241,7 +241,29 @@ cd android && ./gradlew assembleDebug`}
                 </p>
                 <div className="space-y-2">
                   <label className="block text-xs font-medium text-slate-300">
-                    Optional Hugging Face Token:
+                    Hugging Face WAN 2.2 Space URL (Default: Custom Lightning 4-8 Step):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="https://saravutw-wan2-2-i2v-lightning-4-8step-custom.hf.space"
+                    defaultValue={localStorage.getItem('hf_space_url') || ''}
+                    onChange={(e) => {
+                      if (e.target.value.trim()) {
+                        localStorage.setItem('hf_space_url', e.target.value.trim());
+                      } else {
+                        localStorage.removeItem('hf_space_url');
+                      }
+                    }}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+                  />
+                  <p className="text-[11px] text-slate-500">
+                    Leave blank to use the high-speed WAN 2.2 Lightning I2V default space.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-slate-300">
+                    Optional Hugging Face Token (HF_TOKEN):
                   </label>
                   <input
                     type="password"

@@ -11,6 +11,8 @@ import {
   submitWanJob,
   streamWanJob,
   getVideoProxyUrl,
+  isStaticDeployment,
+  getClientSpaceUrl,
 } from "./modules/wanClient";
 import { ScriptSection } from "./components/ScriptSection";
 import { SceneCard } from "./components/SceneCard";
@@ -61,8 +63,22 @@ export default function App() {
 
   // Check backend and HF space connection
   useEffect(() => {
+    if (isStaticDeployment()) {
+      const space = getClientSpaceUrl();
+      const hasToken = Boolean(localStorage.getItem("hf_user_token"));
+      setBackendHealth({
+        space: "WAN 2.2 Lightning (Direct HF)",
+        hasToken,
+      });
+      addLog("info", `Running in Direct Client Mode (GitHub Pages / APK). Target Space: ${space}`);
+      return;
+    }
+
     fetch("/api/health")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
         setBackendHealth({
           space: data.space || "Saravutw/WAN2.2_I2V_LIGHTNING_4-8step_custom",
@@ -71,7 +87,11 @@ export default function App() {
         addLog("info", `Connected to backend. Target Space: ${data.space}`);
       })
       .catch((err) => {
-        addLog("warn", `Backend health check failed: ${err.message}`);
+        setBackendHealth({
+          space: "WAN 2.2 Lightning (Direct HF)",
+          hasToken: Boolean(localStorage.getItem("hf_user_token")),
+        });
+        addLog("info", `Direct Client Mode active (Hugging Face Gradio): ${err.message}`);
       });
   }, [addLog]);
 

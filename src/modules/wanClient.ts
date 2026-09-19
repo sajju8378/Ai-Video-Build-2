@@ -12,7 +12,47 @@ export interface WanProgressUpdate {
 }
 
 /**
- * MODULE I: Recursively searches any response structure for a valid video file path
+ * Checks if the current app is running in a static web environment (GitHub Pages, Capacitor, or file://)
+ * where a custom Express backend server does not exist.
+ */
+export function isStaticDeployment(): boolean {
+  if (typeof window === "undefined") return false;
+  const { hostname, protocol, port } = window.location;
+  return (
+    hostname.endsWith("github.io") ||
+    protocol === "file:" ||
+    protocol === "capacitor:" ||
+    (hostname === "localhost" && port !== "3000")
+  );
+}
+
+/**
+ * Returns the target Hugging Face Space URL.
+ * Checks localStorage for user-overrides, otherwise defaults to the custom lightning space.
+ */
+export function getClientSpaceUrl(): string {
+  if (typeof window !== "undefined") {
+    const custom = localStorage.getItem("hf_space_url")?.trim();
+    if (custom) return custom.replace(/\/+$/, "");
+  }
+  return "https://saravutw-wan2-2-i2v-lightning-4-8step-custom.hf.space";
+}
+
+/**
+ * Returns user authorization headers if an HF token was provided in settings/Deploy modal.
+ */
+export function getClientAuthHeaders(): Record<string, string> {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("hf_user_token")?.trim();
+    if (token) {
+      return { Authorization: `Bearer ${token}` };
+    }
+  }
+  return {};
+}
+
+/**
+ * MODULE I: Recursively searches any response structure for a valid video file path or URL
  */
 export function extractPath(value: any): string {
   if (!value) {
@@ -31,7 +71,7 @@ export function extractPath(value: any): string {
         // continue to string check
       }
     }
-    if (/\.(mp4|webm|mov|mkv)(\?.*)?$/i.test(trimmed) || trimmed.startsWith("/tmp/gradio")) {
+    if (/\.(mp4|webm|mov|mkv)(\?.*)?$/i.test(trimmed) || trimmed.startsWith("/tmp/gradio") || trimmed.includes("/file=")) {
       return trimmed;
     }
   }
@@ -50,12 +90,12 @@ export function extractPath(value: any): string {
 
   // Case 3: Object with path / url / video properties
   if (typeof value === "object") {
-    // Check standard Gradio FileData { path: "..." }
-    if (value.path && typeof value.path === "string") {
-      return value.path;
-    }
+    // Check standard Gradio FileData { url: "..." } or { path: "..." }
     if (value.url && typeof value.url === "string") {
       return value.url;
+    }
+    if (value.path && typeof value.path === "string") {
+      return value.path;
     }
     if (value.video) {
       try {
@@ -88,15 +128,157 @@ export function extractPath(value: any): string {
 }
 
 /**
- * Constructs the browser-safe proxy URL to stream the video file
+ * Constructs the browser-safe URL to stream or play the video file.
+ * Handles absolute URLs, Gradio file endpoints, direct Hugging Face spaces, and server proxies.
  */
 export function getVideoProxyUrl(filePath: string): string {
   if (!filePath) return "";
+  
+  // If already an absolute URL, return directly
+  if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+    return filePath;
+  }
+
+  const spaceUrl = getClientSpaceUrl();
+
+  // If in static deployment (GitHub Pages / Capacitor / mobile APK), resolve against Hugging Face space
+  if (isStaticDeployment()) {
+    if (filePath.startsWith("/gradio_api/file=") || filePath.startsWith("/file=")) {
+      return `${spaceUrl}${filePath}`;
+    }
+    return `${spaceUrl}/gradio_api/file=${encodeURIComponent(filePath)}`;
+  }
+
+  // Full-stack mode: use server proxy
   return `/api/wan/file?path=${encodeURIComponent(filePath)}`;
 }
 
 /**
- * MODULE G: Submits image & prompt to the backend WAN start endpoint
+ * Direct client-side submission to Hugging Face Gradio 6 / Wan2.2 space.
+ * Bypasses local backend entirely (critical for GitHub Pages & static/APK deployments).
+ */
+async function submitDirectToHuggingFace(params: {
+  imageFile: File;
+  prompt: string;
+  duration: number;
+  negativePrompt?: string;
+  steps?: number;
+  quality?: number;
+  scheduler?: string;
+  fps?: number;
+}): Promise<{ eventId: string; duration: number }> {
+  const spaceUrl = getClientSpaceUrl();
+  const authHeaders = getClientAuthHeaders();
+
+  // 1. Upload starting image to Gradio
+  const uploadFormData = new FormData();
+  uploadFormData.append("files", params.imageFile, params.imageFile.name || "scene_image.png");
+
+  let uploadRes: Response;
+  try {
+    uploadRes = await fetch(`${spaceUrl}/gradio_api/upload`, {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+      },
+      body: uploadFormData,
+    });
+  } catch (err: any) {
+    throw new Error(`ERROR: Hugging Face upload network error: ${err.message}`);
+  }
+
+  if (!uploadRes.ok) {
+    const errText = await uploadRes.text().catch(() => "");
+    throw new Error(`ERROR: Hugging Face upload failed (HTTP ${uploadRes.status}): ${errText.slice(0, 200)}`);
+  }
+
+  const uploadJson = await uploadRes.json();
+  let uploadedPath = "";
+  if (Array.isArray(uploadJson) && uploadJson.length > 0) {
+    uploadedPath = uploadJson[0];
+  } else if (typeof uploadJson === "string") {
+    uploadedPath = uploadJson;
+  } else if (uploadJson?.path) {
+    uploadedPath = uploadJson.path;
+  } else {
+    throw new Error("ERROR: Hugging Face upload did not return a valid server file path.");
+  }
+
+  // 2. Prepare Wan 2.2 I2V Lightning parameters
+  const prompt = String(params.prompt || "high quality, cinematic motion, smooth animation").trim();
+  const negativePrompt = String(
+    params.negativePrompt ||
+      "blurry, low quality, chaotic, deformed, watermark, bad anatomy, shaky camera view point"
+  ).trim();
+
+  const rawDuration = parseFloat(String(params.duration));
+  const duration = isNaN(rawDuration) ? 3.5 : Math.max(2, Math.min(10, rawDuration));
+  const steps = params.steps || 4;
+  const quality = params.quality || 5;
+  const scheduler = params.scheduler || "UniPCMultistep";
+  const fps = params.fps || 16;
+  const seed = 42;
+  const randomizeSeed = true;
+
+  const payload = {
+    data: [
+      {
+        path: uploadedPath,
+        meta: { _type: "gradio.FileData" },
+      },
+      null, // last_image (optional)
+      prompt,
+      steps,
+      negativePrompt,
+      duration,
+      1, // guidance scale 1 (high noise)
+      1, // guidance scale 2 (low noise)
+      seed,
+      randomizeSeed,
+      quality,
+      scheduler,
+      3, // flow shift
+      fps,
+      false, // safe mode
+      true, // display result
+    ],
+  };
+
+  let callRes: Response;
+  try {
+    callRes = await fetch(`${spaceUrl}/gradio_api/call/generate_video`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (err: any) {
+    throw new Error(`ERROR: Hugging Face Space connection failed: ${err.message}`);
+  }
+
+  if (!callRes.ok) {
+    const errText = await callRes.text().catch(() => "");
+    throw new Error(`ERROR: WAN job call failed (HTTP ${callRes.status}): ${errText.slice(0, 250)}`);
+  }
+
+  const callJson = await callRes.json();
+  const eventId = callJson?.event_id || callJson?.eventId;
+  if (!eventId) {
+    throw new Error("ERROR: WAN did not return an event ID.");
+  }
+
+  return {
+    eventId,
+    duration,
+  };
+}
+
+/**
+ * MODULE G: Submits image & prompt to WAN generator.
+ * Automatically selects Direct Hugging Face Gradio API on GitHub Pages / APK,
+ * or server proxy on full-stack deployments with automatic fallback.
  */
 export async function submitWanJob(params: {
   imageFile: File;
@@ -112,69 +294,132 @@ export async function submitWanJob(params: {
     throw new Error("ERROR: Starting image is missing.");
   }
 
-  const formData = new FormData();
-  formData.append("image", params.imageFile, params.imageFile.name);
-  formData.append("prompt", params.prompt);
-  formData.append("duration", String(params.duration));
-  if (params.negativePrompt) {
-    formData.append("negativePrompt", params.negativePrompt);
-  }
-  if (params.steps) {
-    formData.append("steps", String(params.steps));
-  }
-  if (params.quality) {
-    formData.append("quality", String(params.quality));
-  }
-  if (params.scheduler) {
-    formData.append("scheduler", params.scheduler);
-  }
-  if (params.fps) {
-    formData.append("fps", String(params.fps));
+  // In static environments (GitHub Pages, Capacitor, file://), bypass the nonexistent Express server
+  if (isStaticDeployment()) {
+    return submitDirectToHuggingFace(params);
   }
 
-  const res = await fetch("/api/wan/start", {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!res.ok) {
-    let errMessage = `HTTP ${res.status}`;
-    try {
-      const data = await res.json();
-      if (data.error) errMessage = data.error;
-    } catch {
-      const text = await res.text().catch(() => "");
-      if (text) errMessage = text.slice(0, 200);
+  // Full-stack mode: try server-side proxy first
+  try {
+    const formData = new FormData();
+    formData.append("image", params.imageFile, params.imageFile.name);
+    formData.append("prompt", params.prompt);
+    formData.append("duration", String(params.duration));
+    if (params.negativePrompt) {
+      formData.append("negativePrompt", params.negativePrompt);
     }
-    throw new Error(errMessage.startsWith("ERROR:") ? errMessage : `ERROR: WAN request failed: ${errMessage}`);
-  }
+    if (params.steps) {
+      formData.append("steps", String(params.steps));
+    }
+    if (params.quality) {
+      formData.append("quality", String(params.quality));
+    }
+    if (params.scheduler) {
+      formData.append("scheduler", params.scheduler);
+    }
+    if (params.fps) {
+      formData.append("fps", String(params.fps));
+    }
 
-  const json = await res.json();
-  if (!json.ok || !json.eventId) {
-    throw new Error(json.error || "ERROR: WAN did not return an event ID.");
-  }
+    const res = await fetch("/api/wan/start", {
+      method: "POST",
+      body: formData,
+    });
 
-  return {
-    eventId: json.eventId,
-    duration: json.duration || params.duration,
-  };
+    // If static hosting returned 404 or 405 Method Not Allowed, fallback to direct HF space
+    if (res.status === 404 || res.status === 405) {
+      return submitDirectToHuggingFace(params);
+    }
+
+    if (!res.ok) {
+      let errMessage = `HTTP ${res.status}`;
+      try {
+        const data = await res.json();
+        if (data.error) errMessage = data.error;
+      } catch {
+        const text = await res.text().catch(() => "");
+        if (text) errMessage = text.slice(0, 200);
+      }
+      throw new Error(errMessage.startsWith("ERROR:") ? errMessage : `ERROR: WAN request failed: ${errMessage}`);
+    }
+
+    const json = await res.json();
+    if (!json.ok || !json.eventId) {
+      throw new Error(json.error || "ERROR: WAN did not return an event ID.");
+    }
+
+    return {
+      eventId: json.eventId,
+      duration: json.duration || params.duration,
+    };
+  } catch (err: any) {
+    // If network error occurred (e.g. static site has no /api/), fallback directly to HF
+    if (
+      err.message?.includes("405") ||
+      err.message?.includes("Failed to fetch") ||
+      err.message?.includes("NetworkError")
+    ) {
+      return submitDirectToHuggingFace(params);
+    }
+    throw err;
+  }
 }
 
 /**
- * MODULE H: Connects to SSE endpoint and streams progress & completion events
+ * MODULE H: Connects to SSE endpoint and streams progress & completion events.
+ * Connects directly to Hugging Face on static hosting or server stream on fullstack.
  */
 export async function streamWanJob(
   eventId: string,
   onUpdate: (update: WanProgressUpdate) => void,
   signal?: AbortSignal
 ): Promise<string> {
-  const streamUrl = `/api/wan/stream?eventId=${encodeURIComponent(eventId)}`;
-  const res = await fetch(streamUrl, {
-    headers: {
+  const spaceUrl = getClientSpaceUrl();
+  const authHeaders = getClientAuthHeaders();
+
+  let streamUrl = `/api/wan/stream?eventId=${encodeURIComponent(eventId)}`;
+  let requestHeaders: Record<string, string> = {
+    Accept: "text/event-stream",
+  };
+
+  // On static hosting, stream directly from Hugging Face Space
+  if (isStaticDeployment()) {
+    streamUrl = `${spaceUrl}/gradio_api/call/generate_video/${encodeURIComponent(eventId)}`;
+    requestHeaders = {
       Accept: "text/event-stream",
-    },
-    signal,
-  });
+      ...authHeaders,
+    };
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(streamUrl, {
+      headers: requestHeaders,
+      signal,
+    });
+
+    // Fallback to direct HF space if server route returned 404 / 405
+    if (res.status === 404 || res.status === 405) {
+      streamUrl = `${spaceUrl}/gradio_api/call/generate_video/${encodeURIComponent(eventId)}`;
+      res = await fetch(streamUrl, {
+        headers: {
+          Accept: "text/event-stream",
+          ...authHeaders,
+        },
+        signal,
+      });
+    }
+  } catch (err: any) {
+    // If server stream failed to connect, try direct Hugging Face SSE stream
+    streamUrl = `${spaceUrl}/gradio_api/call/generate_video/${encodeURIComponent(eventId)}`;
+    res = await fetch(streamUrl, {
+      headers: {
+        Accept: "text/event-stream",
+        ...authHeaders,
+      },
+      signal,
+    });
+  }
 
   if (!res.ok) {
     throw new Error(`ERROR: WAN stream HTTP ${res.status}`);
